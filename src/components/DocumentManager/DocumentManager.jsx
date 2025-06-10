@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Upload, File, Trash2, AlertCircle } from 'lucide-react';
 
 const DocumentManager = () => {
   const [documents, setDocuments] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -18,20 +19,58 @@ const DocumentManager = () => {
     e.preventDefault();
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    // TODO: Implémenter la logique d'upload
+    handleFiles(files);
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    handleFiles(files);
+  };
+
+  const handleFiles = (files) => {
+    const newDocuments = files.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      size: formatFileSize(file.size),
+      file: file
+    }));
+    setDocuments(prev => [...prev, ...newDocuments]);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDelete = (id) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
   };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-gray-800">Mes Documents Juridiques</h2>
       
+      {/* Input file caché */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        multiple
+        accept=".pdf,.docx,.txt"
+        className="hidden"
+      />
+      
       {/* Zone de dépôt */}
       <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
           ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
       >
         <Upload className="mx-auto h-12 w-12 text-gray-400" />
         <p className="mt-2 text-sm text-gray-600">
@@ -58,7 +97,10 @@ const DocumentManager = () => {
                   <p className="text-sm text-gray-500">{doc.size}</p>
                 </div>
               </div>
-              <button className="text-red-500 hover:text-red-700">
+              <button 
+                className="text-red-500 hover:text-red-700"
+                onClick={() => handleDelete(doc.id)}
+              >
                 <Trash2 className="h-5 w-5" />
               </button>
             </div>
