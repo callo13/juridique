@@ -4,6 +4,7 @@ import { Upload, File, Trash2, AlertCircle } from 'lucide-react';
 const DocumentManager = () => {
   const [documents, setDocuments] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({});
   const fileInputRef = useRef(null);
 
   const handleDragOver = (e) => {
@@ -27,14 +28,46 @@ const DocumentManager = () => {
     handleFiles(files);
   };
 
-  const handleFiles = (files) => {
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:5678/webhook-test/e354a619-0065-49c4-9a40-6ef3fb68d527', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return false;
+    }
+  };
+
+  const handleFiles = async (files) => {
     const newDocuments = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
       size: formatFileSize(file.size),
       file: file
     }));
+
     setDocuments(prev => [...prev, ...newDocuments]);
+
+    // Upload each file
+    for (const doc of newDocuments) {
+      setUploadStatus(prev => ({ ...prev, [doc.id]: 'uploading' }));
+      const success = await uploadFile(doc.file);
+      setUploadStatus(prev => ({ 
+        ...prev, 
+        [doc.id]: success ? 'success' : 'error' 
+      }));
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -95,6 +128,17 @@ const DocumentManager = () => {
                 <div>
                   <p className="font-medium text-gray-900">{doc.name}</p>
                   <p className="text-sm text-gray-500">{doc.size}</p>
+                  {uploadStatus[doc.id] && (
+                    <p className={`text-xs ${
+                      uploadStatus[doc.id] === 'success' ? 'text-green-500' :
+                      uploadStatus[doc.id] === 'error' ? 'text-red-500' :
+                      'text-blue-500'
+                    }`}>
+                      {uploadStatus[doc.id] === 'uploading' ? 'Envoi en cours...' :
+                       uploadStatus[doc.id] === 'success' ? 'Envoyé avec succès' :
+                       'Erreur lors de l\'envoi'}
+                    </p>
+                  )}
                 </div>
               </div>
               <button 
