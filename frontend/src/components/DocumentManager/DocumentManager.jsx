@@ -33,7 +33,7 @@ const DocumentManager = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5678/webhook-test/e354a619-0065-49c4-9a40-6ef3fb68d527', {
+      const response = await fetch('http://localhost:5678/webhook/e354a619-0065-49c4-9a40-6ef3fb68d527', {
         method: 'POST',
         body: formData,
       });

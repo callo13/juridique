@@ -55,7 +55,29 @@ const ChatContainer = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const sendMessageToWebhook = async (message) => {
+    try {
+      const response = await fetch('http://localhost:5678/webhook/7e330219-e8e5-4ebc-a87d-dc450b9706eb', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return { success: false, error };
+    }
+  };
+
+  const handleSend = async () => {
     if (!inputMessage.trim()) return;
 
     const newMessage = {
@@ -68,20 +90,31 @@ const ChatContainer = () => {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simuler une réponse de l'IA
-    setTimeout(() => {
-      const aiResponse = {
+    // Envoyer le message au webhook
+    const { success, data, error } = await sendMessageToWebhook(inputMessage);
+    
+    if (!success) {
+      // Ajouter un message d'erreur si l'envoi échoue
+      const errorMessage = {
         id: Date.now() + 1,
-        content: "Je suis en train d'analyser votre question...",
+        content: "Désolé, une erreur s'est produite lors de l'envoi de votre message.",
         isUser: false,
-        sources: [
-          { confidence: 95, reference: "Article 1234 du Code civil" },
-          { confidence: 85, reference: "Jurisprudence Cour de cassation, 2023" },
-        ],
       };
-      setMessages((prev) => [...prev, aiResponse]);
+      setMessages((prev) => [...prev, errorMessage]);
       setIsTyping(false);
-    }, 2000);
+      return;
+    }
+
+    // Utiliser la réponse du webhook
+    const aiResponse = {
+      id: Date.now() + 1,
+      content: data.output || "Je n'ai pas pu générer une réponse appropriée.",
+      isUser: false,
+      sources: data.sources || [],
+    };
+    
+    setMessages((prev) => [...prev, aiResponse]);
+    setIsTyping(false);
   };
 
   const handleKeyPress = (e) => {
